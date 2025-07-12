@@ -1,0 +1,30 @@
+{
+  "name": "skill-swap-platform",
+  "version": "1.0.0",
+  "description": "A platform for users to exchange skills with each other",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd backend && npm run dev",
+    "client": "cd frontend && npm start",
+    "build": "cd frontend && npm run build",
+    "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "setup": "npm run install-all && npm run build"
+  },
+  "keywords": [
+    "skill-swap",
+    "platform",
+    "exchange",
+    "learning"
+  ],
+  "author": "Team Alpha",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "sqlite": "^5.1.1"
+  }
+}
