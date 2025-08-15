@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext.tsx';
 import { useSocket } from '../contexts/SocketContext.tsx';
 import { 
@@ -9,11 +10,13 @@ import {
   LogOut, 
   Menu, 
   X, 
-  Shield, 
-  Users,
+  Shield,
   MessageSquare,
-  Settings
+  Settings,
+  Sparkles,
+  Zap
 } from 'lucide-react';
+import { cn } from '../utils/cn.ts';
 
 const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
@@ -44,36 +47,77 @@ const Navbar: React.FC = () => {
   ];
 
   return (
-    <nav className="bg-white shadow-lg border-b border-gray-200">
+    <motion.nav 
+      initial={{ y: -100 }}
+      animate={{ y: 0 }}
+      className="fixed top-0 left-0 right-0 z-50 glass backdrop-blur-xl border-b border-white/20"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           {/* Logo and main nav */}
-          <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                <Users className="w-5 h-5 text-white" />
+          <motion.div 
+            className="flex items-center"
+            whileHover={{ scale: 1.05 }}
+            transition={{ type: "spring", stiffness: 400, damping: 10 }}
+          >
+            <Link to="/" className="flex items-center space-x-3 group">
+              <motion.div 
+                className="relative w-10 h-10 bg-gradient-brand rounded-xl flex items-center justify-center shadow-glow"
+                whileHover={{ rotate: 360 }}
+                transition={{ duration: 0.6, ease: "easeInOut" }}
+              >
+                <Sparkles className="w-5 h-5 text-white" />
+                <motion.div 
+                  className="absolute inset-0 bg-gradient-brand rounded-xl opacity-0 group-hover:opacity-20"
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
+              </motion.div>
+              <div>
+                <span className="text-2xl font-bold text-gradient">SkillSwap</span>
+                <motion.div 
+                  className="h-0.5 bg-gradient-brand rounded-full"
+                  initial={{ width: 0 }}
+                  whileHover={{ width: '100%' }}
+                  transition={{ duration: 0.3 }}
+                />
               </div>
-              <span className="text-xl font-bold text-gray-900">SkillSwap</span>
             </Link>
-          </div>
+          </motion.div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            {navLinks.map((link) => {
+          <div className="hidden md:flex items-center space-x-2">
+            {navLinks.map((link, index) => {
               const Icon = link.icon;
+              const active = isActive(link.path);
               return (
-                <Link
+                <motion.div
                   key={link.path}
-                  to={link.path}
-                  className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive(link.path)
-                      ? 'text-primary-600 bg-primary-50'
-                      : 'text-gray-600 hover:text-primary-600 hover:bg-gray-50'
-                  }`}
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  whileHover={{ y: -2 }}
                 >
-                  <Icon className="w-4 h-4" />
-                  <span>{link.label}</span>
-                </Link>
+                  <Link
+                    to={link.path}
+                    className={cn(
+                      'relative flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-300 group',
+                      active
+                        ? 'text-primary-600 glass shadow-glow'
+                        : 'text-secondary-700 hover:text-primary-600 hover:glass hover:shadow-soft'
+                    )}
+                  >
+                    <Icon className={cn('w-4 h-4 transition-transform', active && 'scale-110')} />
+                    <span>{link.label}</span>
+                    {active && (
+                      <motion.div
+                        className="absolute inset-0 bg-primary-50/20 rounded-xl"
+                        layoutId="activeTab"
+                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                      />
+                    )}
+                  </Link>
+                </motion.div>
               );
             })}
           </div>
@@ -82,125 +126,222 @@ const Navbar: React.FC = () => {
           <div className="flex items-center space-x-4">
             {/* Connection status indicator */}
             {user && (
-              <div className="hidden md:flex items-center space-x-2">
-                <div className={`w-2 h-2 rounded-full ${connected ? 'bg-success-500' : 'bg-error-500'}`}></div>
-                <span className="text-xs text-gray-500">
+              <motion.div 
+                className="hidden md:flex items-center space-x-2 glass px-3 py-1 rounded-full"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.5 }}
+              >
+                <motion.div 
+                  className={cn('w-2 h-2 rounded-full', connected ? 'bg-success-500' : 'bg-error-500')}
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                />
+                <span className="text-xs font-medium text-secondary-600">
                   {connected ? 'Connected' : 'Disconnected'}
                 </span>
-              </div>
+              </motion.div>
             )}
 
             {/* User menu */}
             {user ? (
-              <div className="hidden md:flex items-center space-x-4">
-                <div className="flex items-center space-x-2">
-                  {user.photo ? (
-                    <img
-                      src={user.photo}
-                      alt={user.name}
-                      className="w-8 h-8 rounded-full object-cover"
+              <motion.div 
+                className="hidden md:flex items-center space-x-4"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <motion.div 
+                  className="flex items-center space-x-3 glass px-4 py-2 rounded-full"
+                  whileHover={{ scale: 1.05 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                >
+                  <motion.div className="relative">
+                    {user.photo ? (
+                      <img
+                        src={user.photo}
+                        alt={user.name}
+                        className="w-8 h-8 rounded-full object-cover border-2 border-white/50"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 bg-gradient-brand rounded-full flex items-center justify-center shadow-glow">
+                        <span className="text-white font-semibold text-sm">
+                          {user.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <motion.div 
+                      className="absolute -top-1 -right-1 w-3 h-3 bg-success-500 rounded-full border-2 border-white"
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
                     />
-                  ) : (
-                    <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                      <span className="text-primary-600 font-medium text-sm">
-                        {user.name.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                  )}
-                  <span className="text-sm font-medium text-gray-700">{user.name}</span>
-                </div>
-                <button
+                  </motion.div>
+                  <span className="text-sm font-semibold text-secondary-900">{user.name}</span>
+                </motion.div>
+                <motion.button
                   onClick={handleLogout}
-                  className="flex items-center space-x-1 px-3 py-2 text-sm font-medium text-gray-600 hover:text-error-600 hover:bg-gray-50 rounded-md transition-colors"
+                  className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-secondary-600 hover:text-error-500 glass hover:shadow-glow rounded-full transition-all duration-300 group"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-4 h-4 group-hover:rotate-12 transition-transform" />
                   <span>Logout</span>
-                </button>
-              </div>
+                </motion.button>
+              </motion.div>
             ) : (
-              <div className="hidden md:flex items-center space-x-4">
-                <Link
-                  to="/login"
-                  className="text-gray-600 hover:text-primary-600 px-3 py-2 text-sm font-medium transition-colors"
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/register"
-                  className="bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-700 transition-colors"
-                >
-                  Sign Up
-                </Link>
-              </div>
+              <motion.div 
+                className="hidden md:flex items-center space-x-3"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Link
+                    to="/login"
+                    className="text-secondary-700 hover:text-primary-600 px-4 py-2 text-sm font-medium glass hover:shadow-soft rounded-full transition-all duration-300"
+                  >
+                    Login
+                  </Link>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                  <Link
+                    to="/register"
+                    className="bg-gradient-brand text-white px-6 py-2 rounded-full text-sm font-semibold shadow-glow hover:shadow-glow-lg transition-all duration-300 flex items-center space-x-2"
+                  >
+                    <Zap className="w-4 h-4" />
+                    <span>Sign Up</span>
+                  </Link>
+                </motion.div>
+              </motion.div>
             )}
 
             {/* Mobile menu button */}
-            <button
+            <motion.button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="md:hidden p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+              className="md:hidden p-3 glass rounded-full text-secondary-700 hover:text-primary-600 hover:shadow-glow transition-all duration-300"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
             >
-              {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
+              <AnimatePresence mode="wait">
+                {isMenuOpen ? (
+                  <motion.div
+                    key="close"
+                    initial={{ rotate: -90, opacity: 0 }}
+                    animate={{ rotate: 0, opacity: 1 }}
+                    exit={{ rotate: 90, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <X className="w-6 h-6" />
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="menu"
+                    initial={{ rotate: 90, opacity: 0 }}
+                    animate={{ rotate: 0, opacity: 1 }}
+                    exit={{ rotate: -90, opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <Menu className="w-6 h-6" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.button>
           </div>
         </div>
       </div>
 
       {/* Mobile Navigation */}
-      {isMenuOpen && (
-        <div className="md:hidden border-t border-gray-200 bg-white">
-          <div className="px-2 pt-2 pb-3 space-y-1">
-            {navLinks.map((link) => {
-              const Icon = link.icon;
-              return (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  onClick={() => setIsMenuOpen(false)}
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
-                    isActive(link.path)
-                      ? 'text-primary-600 bg-primary-50'
-                      : 'text-gray-600 hover:text-primary-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span>{link.label}</span>
-                </Link>
-              );
-            })}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div 
+            className="md:hidden glass border-t border-white/20 backdrop-blur-xl"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+          >
+            <motion.div 
+              className="px-4 pt-4 pb-6 space-y-2"
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.1 }}
+            >
+              {navLinks.map((link, index) => {
+                const Icon = link.icon;
+                const active = isActive(link.path);
+                return (
+                  <motion.div
+                    key={link.path}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.1 + 0.2 }}
+                  >
+                    <Link
+                      to={link.path}
+                      onClick={() => setIsMenuOpen(false)}
+                      className={cn(
+                        'flex items-center space-x-3 px-4 py-3 rounded-xl text-base font-medium transition-all duration-300',
+                        active
+                          ? 'text-primary-600 glass shadow-glow'
+                          : 'text-secondary-700 hover:text-primary-600 hover:glass hover:shadow-soft'
+                      )}
+                    >
+                      <Icon className={cn('w-5 h-5', active && 'scale-110')} />
+                      <span>{link.label}</span>
+                    </Link>
+                  </motion.div>
+                );
+              })}
             
             {user && (
-              <>
-                <div className="border-t border-gray-200 pt-4 mt-4">
-                  <div className="flex items-center space-x-2 px-3 py-2">
-                    {user.photo ? (
-                      <img
-                        src={user.photo}
-                        alt={user.name}
-                        className="w-8 h-8 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                        <span className="text-primary-600 font-medium text-sm">
-                          {user.name.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                    )}
-                    <span className="text-sm font-medium text-gray-700">{user.name}</span>
-                  </div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                <div className="border-t border-white/20 pt-4 mt-4">
+                  <motion.div 
+                    className="flex items-center space-x-3 px-4 py-3 glass rounded-xl mb-3"
+                    whileHover={{ scale: 1.02 }}
+                  >
+                    <div className="relative">
+                      {user.photo ? (
+                        <img
+                          src={user.photo}
+                          alt={user.name}
+                          className="w-10 h-10 rounded-full object-cover border-2 border-white/50"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 bg-gradient-brand rounded-full flex items-center justify-center shadow-glow">
+                          <span className="text-white font-semibold">
+                            {user.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-success-500 rounded-full border-2 border-white" />
+                    </div>
+                    <div>
+                      <div className="text-base font-semibold text-secondary-900">{user.name}</div>
+                      <div className="text-xs text-secondary-600">{connected ? 'Online' : 'Offline'}</div>
+                    </div>
+                  </motion.div>
                 </div>
-                <button
+                <motion.button
                   onClick={handleLogout}
-                  className="flex items-center space-x-2 px-3 py-2 text-base font-medium text-gray-600 hover:text-error-600 hover:bg-gray-50 rounded-md transition-colors w-full"
+                  className="flex items-center space-x-3 px-4 py-3 text-base font-medium text-secondary-600 hover:text-error-500 glass hover:shadow-glow rounded-xl transition-all duration-300 w-full group"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  <LogOut className="w-5 h-5" />
+                  <LogOut className="w-5 h-5 group-hover:rotate-12 transition-transform" />
                   <span>Logout</span>
-                </button>
-              </>
+                </motion.button>
+              </motion.div>
             )}
-          </div>
-        </div>
-      )}
-    </nav>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.nav>
   );
 };
 

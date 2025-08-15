@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { useInView } from 'react-intersection-observer';
 import { useAuth } from '../contexts/AuthContext.tsx';
+import axios from 'axios';
 import { 
   User, 
   MapPin, 
@@ -10,11 +13,62 @@ import {
   MessageSquare, 
   Settings,
   TrendingUp,
-  Users as UsersIcon
+  Users as UsersIcon,
+  Sparkles,
+  ArrowRight
 } from 'lucide-react';
+import { Card } from '../components/ui/Card.tsx';
+import Button from '../components/ui/Button.tsx';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const [dashboardStats, setDashboardStats] = useState({
+    totalSwaps: 0,
+    skillsOffered: 0,
+    pendingRequests: 0,
+    loading: true
+  });
+  const [recentActivity, setRecentActivity] = useState([]);
+
+  // Fetch dashboard data
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      if (!user) return;
+      
+      try {
+        // Fetch swap statistics
+        const swapsResponse = await axios.get('/api/swaps');
+        const swaps = [...(swapsResponse.data.incoming || []), ...(swapsResponse.data.outgoing || [])];
+        
+        // Fetch user profile data for skills count
+        const profileResponse = await axios.get(`/api/users/${user.id}`);
+        const skillsOffered = profileResponse.data.offeredSkills?.length || 0;
+        
+        // Calculate statistics
+        const totalSwaps = swaps.length;
+        const pendingRequests = swaps.filter(swap => swap.status === 'pending').length;
+        
+        setDashboardStats({
+          totalSwaps,
+          skillsOffered,
+          pendingRequests,
+          loading: false
+        });
+        
+        // Set recent activity (latest 5 swaps)
+        const sortedSwaps = swaps
+          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .slice(0, 5);
+        setRecentActivity(sortedSwaps);
+        
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+        setDashboardStats(prev => ({ ...prev, loading: false }));
+      }
+    };
+
+    fetchDashboardData();
+  }, [user]);
 
   const quickActions = [
     {
@@ -47,147 +101,335 @@ const Dashboard: React.FC = () => {
     }
   ];
 
+  const [heroRef, heroInView] = useInView({ threshold: 0.3 });
+  const [statsRef, statsInView] = useInView({ threshold: 0.2 });
+  const [actionsRef, actionsInView] = useInView({ threshold: 0.2 });
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      {/* Welcome Section */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-        <div className="flex items-center space-x-4">
-          {user?.photo ? (
-            <img
-              src={user.photo}
-              alt={user.name}
-              className="w-16 h-16 rounded-full object-cover"
+    <div className="min-h-screen overflow-hidden">
+      {/* Hero Section */}
+      <section className="relative py-20 lg:py-32">
+        {/* Animated background elements */}
+        <motion.div 
+          className="absolute inset-0 opacity-20"
+          animate={{
+            background: [
+              'linear-gradient(135deg, #0ea5e9 0%, #d946ef 100%)',
+              'linear-gradient(135deg, #d946ef 0%, #0ea5e9 100%)',
+              'linear-gradient(135deg, #0ea5e9 0%, #d946ef 100%)'
+            ]
+          }}
+          transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
+        />
+        
+        {/* Floating elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          {[...Array(4)].map((_, i) => (
+            <motion.div
+              key={i}
+              className="absolute w-24 h-24 glass rounded-full"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+              }}
+              animate={{
+                y: [-15, 15, -15],
+                x: [-8, 8, -8],
+                rotate: [0, 180, 360],
+              }}
+              transition={{
+                duration: 8 + i * 2,
+                repeat: Infinity,
+                ease: 'easeInOut',
+              }}
             />
-          ) : (
-            <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center">
-              <span className="text-primary-600 font-bold text-xl">
-                {user?.name.charAt(0).toUpperCase()}
-              </span>
-            </div>
-          )}
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Welcome back, {user?.name}!
-            </h1>
-            <p className="text-gray-600">
-              Ready to swap some skills today?
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-primary-100 rounded-lg">
-              <TrendingUp className="w-6 h-6 text-primary-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Swaps</p>
-              <p className="text-2xl font-bold text-gray-900">0</p>
-            </div>
-          </div>
+          ))}
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-success-100 rounded-lg">
-              <UsersIcon className="w-6 h-6 text-success-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Skills Offered</p>
-              <p className="text-2xl font-bold text-gray-900">0</p>
-            </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10" ref={heroRef}>
+          <motion.div 
+            className="text-center mb-16"
+            initial={{ opacity: 0, y: 50 }}
+            animate={heroInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+          >
+            <motion.div 
+              className="flex justify-center mb-6"
+              initial={{ scale: 0, rotate: -180 }}
+              animate={heroInView ? { scale: 1, rotate: 0 } : {}}
+              transition={{ duration: 1, delay: 0.3, type: 'spring', bounce: 0.3 }}
+            >
+              <div className="relative">
+                {user?.photo ? (
+                  <motion.img
+                    src={user.photo}
+                    alt={user.name}
+                    className="w-20 h-20 rounded-3xl object-cover shadow-glow-lg border-4 border-white/50"
+                    whileHover={{ scale: 1.1, rotate: 5 }}
+                    transition={{ duration: 0.6 }}
+                  />
+                ) : (
+                  <motion.div 
+                    className="w-20 h-20 bg-gradient-brand rounded-3xl flex items-center justify-center shadow-glow-lg"
+                    whileHover={{ scale: 1.1, rotate: 360 }}
+                    transition={{ duration: 0.6 }}
+                  >
+                    <span className="text-white font-bold text-2xl">
+                      {user?.name.charAt(0).toUpperCase()}
+                    </span>
+                  </motion.div>
+                )}
+              </div>
+            </motion.div>
+            
+            <motion.h1 
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 sm:mb-6 leading-tight"
+              initial={{ opacity: 0, y: 30 }}
+              animate={heroInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.8, delay: 0.5 }}
+            >
+              <span className="text-secondary-900">Welcome back,</span>{' '}
+              <span className="text-gradient animate-gradient-x">{user?.name}!</span>
+            </motion.h1>
+            
+            <motion.p 
+              className="text-lg sm:text-xl md:text-2xl text-secondary-600 mb-8 max-w-3xl mx-auto leading-relaxed px-4 sm:px-0"
+              initial={{ opacity: 0, y: 30 }}
+              animate={heroInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.8, delay: 0.7 }}
+            >
+              Ready to swap some skills today? Explore new opportunities and connect with amazing people.
+            </motion.p>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-16 relative" ref={statsRef}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div 
+            className="text-center mb-12"
+            initial={{ opacity: 0, y: 30 }}
+            animate={statsInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.8 }}
+          >
+            <motion.h2 
+              className="text-3xl md:text-4xl font-bold text-secondary-900 mb-4"
+              initial={{ opacity: 0, y: 20 }}
+              animate={statsInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.8, delay: 0.2 }}
+            >
+              Your <span className="text-gradient">Progress</span>
+            </motion.h2>
+            <motion.p 
+              className="text-lg text-secondary-600"
+              initial={{ opacity: 0, y: 20 }}
+              animate={statsInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.8, delay: 0.4 }}
+            >
+              Track your skill swapping journey
+            </motion.p>
+          </motion.div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {[
+              { label: 'Total Swaps', value: dashboardStats.loading ? '...' : dashboardStats.totalSwaps.toString(), icon: TrendingUp, color: 'text-primary-600', gradient: 'from-blue-500 to-cyan-500' },
+              { label: 'Skills Offered', value: dashboardStats.loading ? '...' : dashboardStats.skillsOffered.toString(), icon: UsersIcon, color: 'text-success-600', gradient: 'from-green-500 to-emerald-500' },
+              { label: 'Pending Requests', value: dashboardStats.loading ? '...' : dashboardStats.pendingRequests.toString(), icon: MessageSquare, color: 'text-warning-600', gradient: 'from-yellow-500 to-orange-500' }
+            ].map((stat, index) => {
+              const Icon = stat.icon;
+              return (
+                <motion.div 
+                  key={index}
+                  className="text-center"
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={statsInView ? { opacity: 1, scale: 1 } : {}}
+                  transition={{ duration: 0.6, delay: index * 0.1 + 0.6, type: 'spring', bounce: 0.4 }}
+                >
+                  <Card variant="glass" className="p-8 group hover:scale-105 transition-all duration-300">
+                    <motion.div 
+                      className={`w-16 h-16 bg-gradient-to-r ${stat.gradient} rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-glow group-hover:scale-110 transition-transform duration-300`}
+                      whileHover={{ rotate: 360 }}
+                      transition={{ duration: 0.6 }}
+                    >
+                      <Icon className="w-8 h-8 text-white" />
+                    </motion.div>
+                    <motion.div 
+                      className="text-4xl md:text-5xl font-bold text-secondary-900 mb-2"
+                      initial={{ scale: 0 }}
+                      animate={statsInView ? { scale: 1 } : {}}
+                      transition={{ duration: 0.8, delay: index * 0.1 + 0.8, type: 'spring', bounce: 0.6 }}
+                    >
+                      {stat.value}
+                    </motion.div>
+                    <div className="text-secondary-600 font-medium">
+                      {stat.label}
+                    </div>
+                  </Card>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
+      </section>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center">
-            <div className="p-2 bg-warning-100 rounded-lg">
-              <MessageSquare className="w-6 h-6 text-warning-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Pending Requests</p>
-              <p className="text-2xl font-bold text-gray-900">0</p>
-            </div>
+      {/* Quick Actions Section */}
+      <section className="py-16 bg-gradient-to-br from-secondary-50 to-primary-50" ref={actionsRef}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div 
+            className="text-center mb-12"
+            initial={{ opacity: 0, y: 30 }}
+            animate={actionsInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.8 }}
+          >
+            <motion.h2 
+              className="text-3xl md:text-4xl font-bold text-secondary-900 mb-4"
+              initial={{ opacity: 0, y: 20 }}
+              animate={actionsInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.8, delay: 0.2 }}
+            >
+              Quick <span className="text-gradient">Actions</span>
+            </motion.h2>
+            <motion.p 
+              className="text-lg text-secondary-600"
+              initial={{ opacity: 0, y: 20 }}
+              animate={actionsInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.8, delay: 0.4 }}
+            >
+              Jump right into your skill swapping journey
+            </motion.p>
+          </motion.div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { title: 'Add Skills', description: 'List skills you can offer or want to learn', icon: Plus, link: '/profile', gradient: 'from-blue-500 to-cyan-500' },
+              { title: 'Find People', description: 'Search for users with skills you need', icon: Search, link: '/search', gradient: 'from-purple-500 to-pink-500' },
+              { title: 'Manage Swaps', description: 'View and manage your swap requests', icon: MessageSquare, link: '/swaps', gradient: 'from-green-500 to-emerald-500' },
+              { title: 'Edit Profile', description: 'Update your profile information', icon: Settings, link: '/profile', gradient: 'from-yellow-500 to-orange-500' }
+            ].map((action, index) => {
+              const Icon = action.icon;
+              return (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 30, scale: 0.9 }}
+                  animate={actionsInView ? { opacity: 1, y: 0, scale: 1 } : {}}
+                  transition={{ duration: 0.6, delay: index * 0.1 + 0.6 }}
+                >
+                  <Link to={action.link}>
+                    <Card variant="glass" className="text-center p-8 h-full group hover:scale-105 transition-all duration-300">
+                      <motion.div 
+                        className={`w-16 h-16 bg-gradient-to-r ${action.gradient} rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-glow group-hover:scale-110 transition-transform duration-300`}
+                        whileHover={{ rotate: 360 }}
+                        transition={{ duration: 0.6 }}
+                      >
+                        <Icon className="w-8 h-8 text-white" />
+                      </motion.div>
+                      <h3 className="text-xl font-bold text-secondary-900 mb-4 group-hover:text-primary-600 transition-colors">
+                        {action.title}
+                      </h3>
+                      <p className="text-secondary-600 leading-relaxed">
+                        {action.description}
+                      </p>
+                    </Card>
+                  </Link>
+                </motion.div>
+              );
+            })}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Quick Actions */}
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {quickActions.map((action, index) => {
-            const Icon = action.icon;
-            return (
-              <Link
-                key={index}
-                to={action.link}
-                className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className={`p-2 rounded-lg ${action.color}`}>
-                    <Icon className="w-5 h-5 text-white" />
+      {/* Profile & Activity Section */}
+      <section className="py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Profile Summary */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8 }}
+              viewport={{ once: true }}
+            >
+              <Card variant="glass" className="p-8">
+                <div className="flex items-center mb-6">
+                  <motion.div 
+                    className="w-12 h-12 bg-gradient-brand rounded-2xl flex items-center justify-center shadow-glow mr-4"
+                    whileHover={{ rotate: 360 }}
+                    transition={{ duration: 0.6 }}
+                  >
+                    <User className="w-6 h-6 text-white" />
+                  </motion.div>
+                  <h2 className="text-2xl font-bold text-secondary-900">Profile Summary</h2>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <User className="w-5 h-5 text-secondary-400" />
+                    <span className="text-secondary-600 font-medium">Name:</span>
+                    <span className="font-bold text-secondary-900">{user?.name}</span>
                   </div>
-                  <div>
-                    <h3 className="font-medium text-gray-900">{action.title}</h3>
-                    <p className="text-sm text-gray-600">{action.description}</p>
+                  <div className="flex items-center space-x-3">
+                    <MapPin className="w-5 h-5 text-secondary-400" />
+                    <span className="text-secondary-600 font-medium">Location:</span>
+                    <span className="font-bold text-secondary-900">
+                      {user?.location || 'Not specified'}
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-3">
+                    <Clock className="w-5 h-5 text-secondary-400" />
+                    <span className="text-secondary-600 font-medium">Availability:</span>
+                    <span className="font-bold text-secondary-900">
+                      {user?.availability || 'Not specified'}
+                    </span>
                   </div>
                 </div>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
+                <div className="mt-8">
+                  <Link to="/profile">
+                    <Button variant="gradient" icon={Settings} className="w-full">
+                      Edit Profile
+                    </Button>
+                  </Link>
+                </div>
+              </Card>
+            </motion.div>
 
-      {/* Profile Summary */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Profile Summary</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-3">
-            <div className="flex items-center space-x-2">
-              <User className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-600">Name:</span>
-              <span className="font-medium">{user?.name}</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <MapPin className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-600">Location:</span>
-              <span className="font-medium">
-                {user?.location || 'Not specified'}
-              </span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Clock className="w-4 h-4 text-gray-400" />
-              <span className="text-gray-600">Availability:</span>
-              <span className="font-medium">
-                {user?.availability || 'Not specified'}
-              </span>
-            </div>
-          </div>
-          <div className="text-right">
-            <Link
-              to="/profile"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-primary-700 bg-primary-100 hover:bg-primary-200 transition-colors"
+            {/* Recent Activity */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.8 }}
+              viewport={{ once: true }}
             >
-              <Settings className="w-4 h-4 mr-2" />
-              Edit Profile
-            </Link>
+              <Card variant="glass" className="p-8 h-full">
+                <div className="flex items-center mb-6">
+                  <motion.div 
+                    className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-glow mr-4"
+                    whileHover={{ rotate: 360 }}
+                    transition={{ duration: 0.6 }}
+                  >
+                    <MessageSquare className="w-6 h-6 text-white" />
+                  </motion.div>
+                  <h2 className="text-2xl font-bold text-secondary-900">Recent Activity</h2>
+                </div>
+                <div className="text-center py-12">
+                  <motion.div
+                    animate={{ scale: [1, 1.1, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    <Sparkles className="w-16 h-16 text-secondary-400 mx-auto mb-4" />
+                  </motion.div>
+                  <h3 className="text-xl font-semibold text-secondary-900 mb-2">No recent activity</h3>
+                  <p className="text-secondary-600 mb-6">Start by adding skills or searching for people to swap with!</p>
+                  <Link to="/search">
+                    <Button variant="glass" icon={ArrowRight} iconPosition="right">
+                      Explore Skills
+                    </Button>
+                  </Link>
+                </div>
+              </Card>
+            </motion.div>
           </div>
         </div>
-      </div>
-
-      {/* Recent Activity */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mt-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Activity</h2>
-        <div className="text-center py-8">
-          <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-600">No recent activity</p>
-          <p className="text-sm text-gray-500">Start by adding skills or searching for people to swap with!</p>
-        </div>
-      </div>
+      </section>
     </div>
   );
 };

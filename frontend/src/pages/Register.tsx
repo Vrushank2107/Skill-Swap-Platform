@@ -1,10 +1,32 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext.tsx';
-import { User, Mail, Lock, Eye, EyeOff, MapPin, Clock } from 'lucide-react';
+import { User, Mail, Lock, MapPin, Clock, Sparkles, UserPlus, Home, CheckCircle } from 'lucide-react';
+import Form from '../components/ui/Form.tsx';
+import Input from '../components/ui/Input.tsx';
+import Button from '../components/ui/Button.tsx';
+
+interface FormData {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+  location: string;
+  availability: string;
+}
+
+interface FormErrors {
+  name?: string;
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+  location?: string;
+  availability?: string;
+}
 
 const Register: React.FC = () => {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     email: '',
     password: '',
@@ -12,28 +34,69 @@ const Register: React.FC = () => {
     location: '',
     availability: ''
   });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
   const { register } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Clear error when user starts typing
+    if (errors[name as keyof FormErrors]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: undefined
+      }));
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: FormErrors = {};
+    
+    if (!formData.name.trim()) {
+      newErrors.name = 'Full name is required';
+    } else if (formData.name.length < 2) {
+      newErrors.name = 'Name must be at least 2 characters';
+    }
+    
+    if (!formData.email) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+    
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+      newErrors.password = 'Password must contain uppercase, lowercase and number';
+    }
+    
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match');
+    if (!validateForm()) {
       return;
     }
 
     setLoading(true);
+    setErrors({});
 
     try {
       await register({
@@ -51,201 +114,257 @@ const Register: React.FC = () => {
     }
   };
 
+  const passwordStrength = {
+    hasLength: formData.password.length >= 6,
+    hasUpper: /[A-Z]/.test(formData.password),
+    hasLower: /[a-z]/.test(formData.password),
+    hasNumber: /\d/.test(formData.password),
+  };
+
+  const passwordScore = Object.values(passwordStrength).filter(Boolean).length;
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <div className="mx-auto h-12 w-12 bg-primary-600 rounded-lg flex items-center justify-center">
-            <User className="h-6 w-6 text-white" />
-          </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create your account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link
-              to="/login"
-              className="font-medium text-primary-600 hover:text-primary-500"
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Animated background elements */}
+      <motion.div 
+        className="absolute inset-0 opacity-30"
+        animate={{
+          background: [
+            'linear-gradient(135deg, #d946ef 0%, #0ea5e9 100%)',
+            'linear-gradient(225deg, #0ea5e9 0%, #d946ef 100%)',
+            'linear-gradient(135deg, #d946ef 0%, #0ea5e9 100%)'
+          ]
+        }}
+        transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }}
+      />
+      
+      {/* Floating elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {[...Array(6)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-20 h-20 glass rounded-full"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+            }}
+            animate={{
+              y: [-15, 15, -15],
+              x: [-8, 8, -8],
+              rotate: [0, 360],
+            }}
+            transition={{
+              duration: 8 + i,
+              repeat: Infinity,
+              ease: 'easeInOut',
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="flex items-center justify-center min-h-screen py-12 px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="w-full max-w-md">
+          {/* Logo and branding */}
+          <motion.div
+            className="text-center mb-8"
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <motion.div 
+              className="mx-auto w-16 h-16 bg-gradient-brand rounded-2xl flex items-center justify-center shadow-glow-lg mb-4"
+              whileHover={{ rotate: 360, scale: 1.1 }}
+              transition={{ duration: 0.6 }}
             >
-              sign in to your existing account
-            </Link>
-          </p>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="name" className="sr-only">
-                Full Name
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="appearance-none relative block w-full px-3 py-2 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                  placeholder="Full Name"
-                />
-              </div>
-            </div>
+              <Sparkles className="h-8 w-8 text-white" />
+            </motion.div>
+            <motion.h1
+              className="text-3xl font-bold text-secondary-900 mb-2"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              Join SkillSwap
+            </motion.h1>
+            <motion.p
+              className="text-secondary-600"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+            >
+              Create your account and start your learning journey
+            </motion.p>
+          </motion.div>
 
-            <div>
-              <label htmlFor="email" className="sr-only">
-                Email address
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="appearance-none relative block w-full px-3 py-2 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                  placeholder="Email address"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="password"
+          <Form onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              <Input
+                name="name"
+                type="text"
+                icon={User}
+                placeholder="Enter your full name"
+                value={formData.name}
+                onChange={handleChange}
+                error={errors.name}
+                autoComplete="name"
+              />
+              
+              <Input
+                name="email"
+                type="email"
+                icon={Mail}
+                placeholder="Enter your email address"
+                value={formData.email}
+                onChange={handleChange}
+                error={errors.email}
+                autoComplete="email"
+              />
+              
+              <div className="space-y-2">
+                <Input
                   name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  autoComplete="new-password"
-                  required
+                  type="password"
+                  icon={Lock}
+                  placeholder="Create a secure password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="appearance-none relative block w-full px-3 py-2 pl-10 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                  placeholder="Password"
-                />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className="sr-only">
-                Confirm Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type={showConfirmPassword ? 'text' : 'password'}
+                  error={errors.password}
                   autoComplete="new-password"
-                  required
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className="appearance-none relative block w-full px-3 py-2 pl-10 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                  placeholder="Confirm Password"
                 />
-                <button
-                  type="button"
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400" />
-                  ) : (
-                    <Eye className="h-5 w-5 text-gray-400" />
-                  )}
-                </button>
+                
+                {/* Password strength indicator */}
+                {formData.password && (
+                  <motion.div
+                    className="space-y-2"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div className="flex gap-1">
+                      {[...Array(4)].map((_, i) => (
+                        <motion.div
+                          key={i}
+                          className={`h-1 flex-1 rounded-full ${
+                            i < passwordScore
+                              ? passwordScore <= 2
+                                ? 'bg-error-500'
+                                : passwordScore === 3
+                                ? 'bg-warning-500'
+                                : 'bg-success-500'
+                              : 'bg-secondary-200'
+                          }`}
+                          initial={{ scaleX: 0 }}
+                          animate={{ scaleX: i < passwordScore ? 1 : 0 }}
+                          transition={{ delay: i * 0.1 }}
+                        />
+                      ))}
+                    </div>
+                    <div className="text-xs space-y-1">
+                      <div className={`flex items-center gap-1 ${
+                        passwordStrength.hasLength ? 'text-success-600' : 'text-secondary-500'
+                      }`}>
+                        <CheckCircle className="w-3 h-3" />
+                        At least 6 characters
+                      </div>
+                      <div className="flex gap-4">
+                        <div className={`flex items-center gap-1 ${
+                          passwordStrength.hasUpper ? 'text-success-600' : 'text-secondary-500'
+                        }`}>
+                          <CheckCircle className="w-3 h-3" />
+                          Uppercase
+                        </div>
+                        <div className={`flex items-center gap-1 ${
+                          passwordStrength.hasLower ? 'text-success-600' : 'text-secondary-500'
+                        }`}>
+                          <CheckCircle className="w-3 h-3" />
+                          Lowercase
+                        </div>
+                        <div className={`flex items-center gap-1 ${
+                          passwordStrength.hasNumber ? 'text-success-600' : 'text-secondary-500'
+                        }`}>
+                          <CheckCircle className="w-3 h-3" />
+                          Number
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
               </div>
-            </div>
-
-            <div>
-              <label htmlFor="location" className="sr-only">
-                Location (Optional)
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <MapPin className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="location"
+              
+              <Input
+                name="confirmPassword"
+                type="password"
+                icon={Lock}
+                placeholder="Confirm your password"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                error={errors.confirmPassword}
+                autoComplete="new-password"
+              />
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Input
                   name="location"
                   type="text"
+                  icon={MapPin}
+                  placeholder="Your location (optional)"
                   value={formData.location}
                   onChange={handleChange}
-                  className="appearance-none relative block w-full px-3 py-2 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                  placeholder="Location (Optional)"
+                  error={errors.location}
+                  helperText="Help others find local skill swaps"
                 />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="availability" className="sr-only">
-                Availability (Optional)
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Clock className="h-5 w-5 text-gray-400" />
-                </div>
-                <input
-                  id="availability"
+                
+                <Input
                   name="availability"
                   type="text"
+                  icon={Clock}
+                  placeholder="Your availability (optional)"
                   value={formData.availability}
                   onChange={handleChange}
-                  className="appearance-none relative block w-full px-3 py-2 pl-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                  placeholder="Availability (e.g., Weekends, Evenings)"
+                  error={errors.availability}
+                  helperText="e.g., Weekends, Evenings"
                 />
               </div>
             </div>
-          </div>
 
-          <div>
-            <button
+            <Button
               type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              variant="gradient"
+              size="lg"
+              fullWidth
+              isLoading={loading}
+              icon={UserPlus}
+              iconPosition="right"
             >
-              {loading ? (
-                <div className="spinner"></div>
-              ) : (
-                'Create Account'
-              )}
-            </button>
-          </div>
-
-          <div className="text-center">
-            <Link
-              to="/"
-              className="font-medium text-primary-600 hover:text-primary-500"
+              Create Your Account
+            </Button>
+            
+            <motion.div 
+              className="text-center space-y-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6 }}
             >
-              Back to home
-            </Link>
-          </div>
-        </form>
+              <p className="text-secondary-600">
+                Already have an account?{' '}
+                <Link
+                  to="/login"
+                  className="font-semibold text-primary-600 hover:text-primary-700 transition-colors"
+                >
+                  Sign in here
+                </Link>
+              </p>
+              
+              <Link
+                to="/"
+                className="inline-flex items-center gap-2 font-medium text-secondary-500 hover:text-primary-600 transition-colors group"
+              >
+                <Home className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                Back to home
+              </Link>
+            </motion.div>
+          </Form>
+        </div>
       </div>
     </div>
   );

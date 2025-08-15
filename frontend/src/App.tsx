@@ -45,9 +45,9 @@ const AppContent: React.FC = () => {
   const { user } = useAuth();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-secondary-50 to-primary-50">
       <Navbar />
-      <main className="container mx-auto px-4 py-8">
+      <main>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
