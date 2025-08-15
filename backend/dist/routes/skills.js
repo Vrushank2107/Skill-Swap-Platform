@@ -4,6 +4,7 @@ const express_1 = require("express");
 const uuid_1 = require("uuid");
 const express_validator_1 = require("express-validator");
 const init_1 = require("../database/init");
+const auth_1 = require("../middleware/auth");
 const router = (0, express_1.Router)();
 // Get all skills (public endpoint)
 router.get('/', async (req, res) => {
@@ -36,7 +37,7 @@ router.get('/', async (req, res) => {
     }
 });
 // Get user's skills (authenticated)
-router.get('/my-skills', async (req, res) => {
+router.get('/my-skills', auth_1.authenticateToken, async (req, res) => {
     try {
         const userId = req.user?.id;
         const db = (0, init_1.getDb)();
@@ -59,7 +60,7 @@ router.get('/my-skills', async (req, res) => {
     }
 });
 // Add a skill
-router.post('/', [
+router.post('/', auth_1.authenticateToken, [
     (0, express_validator_1.body)('skillName').trim().isLength({ min: 2 }).withMessage('Skill name must be at least 2 characters'),
     (0, express_validator_1.body)('type').isIn(['offered', 'wanted']).withMessage('Type must be either "offered" or "wanted"'),
     (0, express_validator_1.body)('description').optional().trim()
@@ -71,6 +72,17 @@ router.post('/', [
         }
         const { skillName, type, description } = req.body;
         const userId = req.user?.id;
+        
+        // Debug logging
+        console.log('Add skill request - User object:', req.user);
+        console.log('Add skill request - User ID:', userId);
+        console.log('Add skill request - Headers:', req.headers.authorization);
+        
+        if (!userId) {
+            console.error('User ID is null or undefined');
+            return res.status(401).json({ message: 'User authentication failed - no user ID' });
+        }
+        
         const skillId = (0, uuid_1.v4)();
         const db = (0, init_1.getDb)();
         // Check if user already has this skill
@@ -95,7 +107,7 @@ router.post('/', [
     }
 });
 // Update a skill
-router.put('/:skillId', [
+router.put('/:skillId', auth_1.authenticateToken, [
     (0, express_validator_1.body)('skillName').optional().trim().isLength({ min: 2 }).withMessage('Skill name must be at least 2 characters'),
     (0, express_validator_1.body)('description').optional().trim()
 ], async (req, res) => {
@@ -136,7 +148,7 @@ router.put('/:skillId', [
     }
 });
 // Delete a skill
-router.delete('/:skillId', async (req, res) => {
+router.delete('/:skillId', auth_1.authenticateToken, async (req, res) => {
     try {
         const { skillId } = req.params;
         const userId = req.user?.id;
@@ -155,7 +167,7 @@ router.delete('/:skillId', async (req, res) => {
     }
 });
 // Admin: Get pending skills for approval
-router.get('/admin/pending', async (req, res) => {
+router.get('/admin/pending', auth_1.authenticateToken, async (req, res) => {
     try {
         if (!req.user?.isAdmin) {
             return res.status(403).json({ message: 'Admin access required' });
@@ -177,7 +189,7 @@ router.get('/admin/pending', async (req, res) => {
     }
 });
 // Admin: Approve/reject skill
-router.put('/admin/:skillId/approve', [
+router.put('/admin/:skillId/approve', auth_1.authenticateToken, [
     (0, express_validator_1.body)('approved').isBoolean().withMessage('Approved must be a boolean')
 ], async (req, res) => {
     try {

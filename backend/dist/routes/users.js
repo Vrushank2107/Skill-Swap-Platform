@@ -136,29 +136,90 @@ router.post('/profile/photo', upload.single('photo'), async (req, res) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 });
-// Search users by skill
+// Advanced user search
 router.get('/search', async (req, res) => {
     try {
-        const { skill, location } = req.query;
+        const { skill, location, skillType, page = 1, limit = 20 } = req.query;
         const db = (0, init_1.getDb)();
+        
+        const offset = (parseInt(page) - 1) * parseInt(limit);
+        
         let query = `
-      SELECT DISTINCT u.id, u.name, u.location, u.photo, u.availability
+      SELECT DISTINCT u.id, u.name, u.location, u.photo, u.availability,
+             GROUP_CONCAT(CASE WHEN s.type = 'offered' THEN s.skill_name END) as offered_skills,
+             GROUP_CONCAT(CASE WHEN s.type = 'wanted' THEN s.skill_name END) as wanted_skills
       FROM users u
       INNER JOIN skills s ON u.id = s.user_id
       WHERE u.is_public = 1 AND u.is_banned = 0 AND s.approved = 1
     `;
         const values = [];
+        
         if (skill) {
             query += ' AND s.skill_name LIKE ?';
             values.push(`%${skill}%`);
         }
+        
+        if (skillType && ['offered', 'wanted'].includes(skillType)) {
+            query += ' AND s.type = ?';
+            values.push(skillType);
+        }
+        
         if (location) {
             query += ' AND u.location LIKE ?';
             values.push(`%${location}%`);
         }
+        
+        query += ' GROUP BY u.id, u.name, u.location, u.photo, u.availability';
         query += ' ORDER BY u.name';
+        query += ' LIMIT ? OFFSET ?';
+        
+        values.push(parseInt(limit), offset);
+        
         const users = await db.all(query, values);
-        res.json({ users });
+        
+        // Get total count for pagination
+        let countQuery = `
+      SELECT COUNT(DISTINCT u.id) as total
+      FROM users u
+      INNER JOIN skills s ON u.id = s.user_id
+      WHERE u.is_public = 1 AND u.is_banned = 0 AND s.approved = 1
+    `;
+        const countValues = [];
+        
+        if (skill) {
+            countQuery += ' AND s.skill_name LIKE ?';
+            countValues.push(`%${skill}%`);
+        }
+        
+        if (skillType && ['offered', 'wanted'].includes(skillType)) {
+            countQuery += ' AND s.type = ?';
+            countValues.push(skillType);
+        }
+        
+        if (location) {
+            countQuery += ' AND u.location LIKE ?';
+            countValues.push(`%${location}%`);
+        }
+        
+        const countResult = await db.get(countQuery, countValues);
+        const total = countResult.total;
+        
+        // Process skills for each user
+        const processedUsers = users.map(user => ({
+            ...user,
+            offeredSkills: user.offered_skills ? user.offered_skills.split(',') : [],
+            wantedSkills: user.wanted_skills ? user.wanted_skills.split(',') : []
+        }));
+        
+        res.json({ 
+            users: processedUsers,
+            pagination: {
+                page: parseInt(page),
+                limit: parseInt(limit),
+                total,
+                totalPages: Math.ceil(total / parseInt(limit))
+            }
+        });
     }
     catch (error) {
         console.error('Search users error:', error);

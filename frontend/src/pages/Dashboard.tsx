@@ -26,6 +26,9 @@ const Dashboard: React.FC = () => {
     totalSwaps: 0,
     skillsOffered: 0,
     pendingRequests: 0,
+    pendingIncoming: 0,
+    pendingOutgoing: 0,
+    acceptedSwaps: 0,
     loading: true
   });
   const [recentActivity, setRecentActivity] = useState([]);
@@ -33,25 +36,73 @@ const Dashboard: React.FC = () => {
   // Fetch dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {
-      if (!user) return;
+      if (!user) {
+        console.log('No user found, skipping dashboard data fetch');
+        return;
+      }
+      
+      console.log('Fetching dashboard data for user:', user.id);
       
       try {
         // Fetch swap statistics
+        console.log('Fetching swaps from /api/swaps...');
         const swapsResponse = await axios.get('/api/swaps');
+        console.log('Swaps response:', swapsResponse.data);
+        
         const swaps = [...(swapsResponse.data.incoming || []), ...(swapsResponse.data.outgoing || [])];
+        console.log('Total swaps found:', swaps.length);
         
         // Fetch user profile data for skills count
-        const profileResponse = await axios.get(`/api/users/${user.id}`);
-        const skillsOffered = profileResponse.data.offeredSkills?.length || 0;
+        let skillsOffered = 0;
+        try {
+          console.log('Fetching profile from /api/users/profile/' + user.id);
+          const profileResponse = await axios.get(`/api/users/profile/${user.id}`);
+          console.log('Profile response:', profileResponse.data);
+          skillsOffered = profileResponse.data.user?.offeredSkills?.length || 0;
+        } catch (profileError) {
+          console.log('Profile fetch failed, trying /api/users/profile without ID');
+          try {
+            const profileResponse = await axios.get('/api/users/profile');
+            console.log('Profile response from /api/users/profile:', profileResponse.data);
+            skillsOffered = profileResponse.data.user?.offeredSkills?.length || 0;
+          } catch (altProfileError) {
+            console.log('Both profile endpoints failed:', altProfileError);
+            // Try to get skills from auth context if available
+            skillsOffered = user.offeredSkills?.length || 0;
+          }
+        }
         
-        // Calculate statistics
+        // Calculate statistics with more detail
         const totalSwaps = swaps.length;
-        const pendingRequests = swaps.filter(swap => swap.status === 'pending').length;
+        const incomingSwaps = swapsResponse.data.incoming || [];
+        const outgoingSwaps = swapsResponse.data.outgoing || [];
+        
+        // Calculate different types of pending requests
+        const pendingIncoming = incomingSwaps.filter(swap => swap.status === 'pending').length;
+        const pendingOutgoing = outgoingSwaps.filter(swap => swap.status === 'pending').length;
+        const totalPending = pendingIncoming + pendingOutgoing;
+        
+        // Count accepted swaps
+        const acceptedSwaps = swaps.filter(swap => swap.status === 'accepted').length;
+        
+        console.log('Dashboard stats calculated:', {
+          totalSwaps,
+          skillsOffered,
+          pendingIncoming,
+          pendingOutgoing,
+          totalPending,
+          acceptedSwaps,
+          incomingCount: incomingSwaps.length,
+          outgoingCount: outgoingSwaps.length
+        });
         
         setDashboardStats({
           totalSwaps,
           skillsOffered,
-          pendingRequests,
+          pendingRequests: totalPending,
+          pendingIncoming,
+          pendingOutgoing,
+          acceptedSwaps,
           loading: false
         });
         
@@ -59,10 +110,15 @@ const Dashboard: React.FC = () => {
         const sortedSwaps = swaps
           .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
           .slice(0, 5);
+        console.log('Recent activity swaps:', sortedSwaps);
         setRecentActivity(sortedSwaps);
         
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
+        if (error.response) {
+          console.error('Error response:', error.response.data);
+          console.error('Error status:', error.response.status);
+        }
         setDashboardStats(prev => ({ ...prev, loading: false }));
       }
     };
@@ -200,6 +256,7 @@ const Dashboard: React.FC = () => {
             >
               Ready to swap some skills today? Explore new opportunities and connect with amazing people.
             </motion.p>
+            
           </motion.div>
         </div>
       </section>
@@ -265,6 +322,21 @@ const Dashboard: React.FC = () => {
                     <div className="text-secondary-600 font-medium">
                       {stat.label}
                     </div>
+                    
+                    {/* Show breakdown for pending requests */}
+                    {index === 2 && !dashboardStats.loading && dashboardStats.pendingRequests > 0 && (
+                      <motion.div 
+                        className="mt-4 pt-4 border-t border-secondary-200"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 1.2 }}
+                      >
+                        <div className="flex justify-between text-xs text-secondary-600">
+                          <span>Incoming: {dashboardStats.pendingIncoming}</span>
+                          <span>Outgoing: {dashboardStats.pendingOutgoing}</span>
+                        </div>
+                      </motion.div>
+                    )}
                   </Card>
                 </motion.div>
               );
@@ -410,21 +482,61 @@ const Dashboard: React.FC = () => {
                   </motion.div>
                   <h2 className="text-2xl font-bold text-secondary-900">Recent Activity</h2>
                 </div>
-                <div className="text-center py-12">
-                  <motion.div
-                    animate={{ scale: [1, 1.1, 1] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    <Sparkles className="w-16 h-16 text-secondary-400 mx-auto mb-4" />
-                  </motion.div>
-                  <h3 className="text-xl font-semibold text-secondary-900 mb-2">No recent activity</h3>
-                  <p className="text-secondary-600 mb-6">Start by adding skills or searching for people to swap with!</p>
-                  <Link to="/search">
-                    <Button variant="glass" icon={ArrowRight} iconPosition="right">
-                      Explore Skills
-                    </Button>
-                  </Link>
-                </div>
+                {recentActivity.length > 0 ? (
+                  <div className="space-y-4">
+                    {recentActivity.map((swap, index) => (
+                      <motion.div
+                        key={swap.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="p-4 bg-secondary-50 rounded-xl border-l-4 border-primary-500"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-secondary-900 text-sm">
+                              {swap.responder_id === user?.id ? 'Incoming' : 'Outgoing'} Swap
+                            </p>
+                            <p className="text-xs text-secondary-600">
+                              {swap.offered_skill} ↔ {swap.wanted_skill}
+                            </p>
+                          </div>
+                          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                            swap.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                            swap.status === 'accepted' ? 'bg-green-100 text-green-700' :
+                            swap.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                            'bg-gray-100 text-gray-700'
+                          }`}>
+                            {swap.status.charAt(0).toUpperCase() + swap.status.slice(1)}
+                          </span>
+                        </div>
+                      </motion.div>
+                    ))}
+                    <div className="mt-4">
+                      <Link to="/swaps">
+                        <Button variant="glass" icon={ArrowRight} iconPosition="right" className="w-full">
+                          View All Swaps
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <motion.div
+                      animate={{ scale: [1, 1.1, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    >
+                      <Sparkles className="w-16 h-16 text-secondary-400 mx-auto mb-4" />
+                    </motion.div>
+                    <h3 className="text-xl font-semibold text-secondary-900 mb-2">No recent activity</h3>
+                    <p className="text-secondary-600 mb-6">Start by adding skills or searching for people to swap with!</p>
+                    <Link to="/search">
+                      <Button variant="glass" icon={ArrowRight} iconPosition="right">
+                        Explore Skills
+                      </Button>
+                    </Link>
+                  </div>
+                )}
               </Card>
             </motion.div>
           </div>
