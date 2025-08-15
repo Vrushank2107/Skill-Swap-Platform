@@ -182,15 +182,6 @@ const Home: React.FC = () => {
                       Get Started Free
                     </Button>
                   </Link>
-                  <Link to="/search">
-                    <Button 
-                      variant="glass" 
-                      size="xl" 
-                      icon={Search}
-                    >
-                      Browse Skills
-                    </Button>
-                  </Link>
                 </>
               )}
             </motion.div>
@@ -545,17 +536,6 @@ const Home: React.FC = () => {
                       className="bg-white text-primary-600 hover:bg-white/90 font-bold"
                     >
                       Join SkillSwap Free
-                    </Button>
-                  </Link>
-                  <Link to="/search">
-                    <Button 
-                      variant="ghost" 
-                      size="xl" 
-                      icon={ArrowRight} 
-                      iconPosition="right" 
-                      className="text-white hover:bg-white/10"
-                    >
-                      Explore Skills
                     </Button>
                   </Link>
                 </>

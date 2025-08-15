@@ -55,7 +55,7 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
+    <div className="page-container relative overflow-hidden">
       {/* Animated background elements */}
       <motion.div 
         className="absolute inset-0 opacity-30"

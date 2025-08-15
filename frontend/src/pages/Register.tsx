@@ -124,7 +124,7 @@ const Register: React.FC = () => {
   const passwordScore = Object.values(passwordStrength).filter(Boolean).length;
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
+    <div className="page-container relative overflow-hidden">
       {/* Animated background elements */}
       <motion.div 
         className="absolute inset-0 opacity-30"

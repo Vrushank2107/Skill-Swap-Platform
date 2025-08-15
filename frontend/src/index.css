@@ -6,6 +6,9 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 :root {
+  /* Layout variables */
+  --navbar-height: 4rem; /* 64px - matches h-16 in navbar */
+  
   /* Glass morphism variables */
   --glass-bg: rgba(255, 255, 255, 0.25);
   --glass-bg-dark: rgba(0, 0, 0, 0.25);
@@ -191,6 +194,16 @@ code {
 /* Hide focus for mouse users */
 .js-focus-visible *:focus:not(.focus-visible) {
   outline: none;
+}
+
+/* Layout utilities for navbar spacing */
+.page-container {
+  min-height: 100vh;
+  padding-top: var(--navbar-height);
+}
+
+.page-container-no-padding {
+  min-height: 100vh;
 }
 
 /* Responsive utilities */

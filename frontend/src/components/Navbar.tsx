@@ -37,8 +37,8 @@ const Navbar: React.FC = () => {
 
   const navLinks = [
     { path: '/', label: 'Home', icon: Home },
-    { path: '/search', label: 'Search', icon: Search },
     ...(user ? [
+      { path: '/search', label: 'Search', icon: Search },
       { path: '/dashboard', label: 'Dashboard', icon: Settings },
       { path: '/swaps', label: 'Swaps', icon: MessageSquare },
       { path: '/profile', label: 'Profile', icon: User },
